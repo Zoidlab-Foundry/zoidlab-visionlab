@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { api, usd, ms, pct } from "../../lib/api";
+import { api, usd, ms, pct, runToCompletion } from "../../lib/api";
 import RunResult from "../../components/RunResult";
 
 function RunInner() {
@@ -13,6 +13,7 @@ function RunInner() {
   const [taskId, setTaskId] = useState(params.get("task") || "");
   const [assetId, setAssetId] = useState("");
   const [running, setRunning] = useState(false);
+  const [phase, setPhase] = useState<string | null>(null);
   const [result, setResult] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -27,13 +28,17 @@ function RunInner() {
 
   async function run() {
     if (!taskId || !assetId) return;
-    setRunning(true); setErr(null); setResult(null);
+    setRunning(true); setErr(null); setResult(null); setPhase("queued");
     try {
-      const r = await api.runTask({ task_id: taskId, asset_id: assetId });
+      const r = await runToCompletion(
+        () => api.runTask({ task_id: taskId, asset_id: assetId }),
+        (rid) => api.getRun(rid),
+        (s) => setPhase(s),
+      );
       setResult(r);
     } catch (e: any) {
       setErr(e.message || "run failed");
-    } finally { setRunning(false); }
+    } finally { setRunning(false); setPhase(null); }
   }
 
   return (
@@ -81,7 +86,7 @@ function RunInner() {
 
           <button onClick={run} disabled={running || !taskId || !assetId}
             className="mt-5 w-full rounded-lg bg-vi px-4 py-2.5 text-[13px] font-semibold text-black hover:opacity-90 disabled:opacity-40">
-            {running ? "Running vision model…" : "Run extraction →"}
+            {running ? (phase === "running" ? "Running vision model…" : phase === "queued" ? "Queued…" : "Working…") : "Run extraction →"}
           </button>
           {err && <div className="mt-3 rounded-lg border border-bad/30 bg-bad/5 px-3 py-2 text-[12.5px] text-bad">{err}</div>}
         </div>

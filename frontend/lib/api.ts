@@ -29,9 +29,34 @@ export const api = {
   runTask: (b: { task_id: string; asset_id: string; model?: string }) => req<any>("/api/run", { method: "POST", body: JSON.stringify(b) }),
   runs: () => req<{ runs: any[] }>("/api/runs").then((d) => d.runs),
   getRun: (id: string) => req<any>(`/api/runs/${id}`),
+  job: (id: string) => req<any>(`/api/jobs/${id}`),
 
   exportUrl: (tid: string) => `/api/tasks/${tid}/export`,
 };
+
+const TERMINAL = ["succeeded", "partial", "failed", "blocked", "timed_out", "cancelled", "interrupted"];
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Submit a durable job and poll it to completion, then return the finished run.
+export async function runToCompletion(
+  submit: () => Promise<any>,
+  getRun: (id: string) => Promise<any>,
+  onStatus?: (s: string) => void,
+): Promise<any> {
+  const sub = await submit();
+  if (!sub?.job_id) return sub;                       // fallback: synchronous response
+  let job = await api.job(sub.job_id);
+  onStatus?.(job.status);
+  let tries = 0;
+  while (!TERMINAL.includes(job.status) && tries < 120) {
+    await sleep(900);
+    job = await api.job(sub.job_id);
+    onStatus?.(job.status);
+    tries++;
+  }
+  const run = await getRun(sub.run_id);
+  return { ...run, _job: job };
+}
 
 export const usd = (n: number) => "$" + (n ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 5 });
 export const ms = (n: number | null) => (n == null ? "—" : n >= 1000 ? (n / 1000).toFixed(2) + "s" : Math.round(n) + "ms");
