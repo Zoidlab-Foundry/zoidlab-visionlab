@@ -1,7 +1,7 @@
 """Seed VisionLab with a demo project + reusable vision tasks (real extraction schemas).
 No runs are seeded — runs come only from real relay vision calls the user triggers, so
 nothing here fabricates extraction results."""
-import database as db
+import db_pg as db
 
 _TASKS = [
     {"name": "Invoice extraction", "category": "receipt/invoice",

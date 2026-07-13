@@ -10,14 +10,14 @@ from fastapi import FastAPI, Request, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List
 
-import database as db
-import pricing
+import db_pg as db
 import llm
 import vision_engine
 import exporter
 import foundry
 import jobs
 import seed_vision
+from tasks import run_vision
 from auth import session, require_pro, relay_key, entitlement
 
 
@@ -200,20 +200,11 @@ async def run_task(body: RunBody, request: Request, owner: str = Depends(require
         return db.get_run(rid, owner)
     rid = db.create_run(task, asset, model, owner, corr)
     rk = relay_key(request)
-    llm.set_relay_auth(rk)
-
-    async def runner():
-        res = await vision_engine.run(task, asset, model, relay_key=rk)
-        try:
-            await foundry.emit_spend(res.get("usage"), resource_id=rid, feature=task.get("name"),
-                                     correlation_id=corr, environment="development")
-        except Exception:
-            pass
-        return res
-
-    job = jobs.submit(owner, "vision_run", rid, runner,
-                      on_result=lambda res: db.finish_run(rid, res), timeout_s=90)
-    return {"job_id": job["id"], "run_id": rid, "status": job["status"], "run": db.get_run(rid, owner)}
+    job_id = jobs.create(owner, "vision_run", rid, timeout_s=150)
+    async_res = run_vision.delay(job_id, rid, task["id"], asset["id"], model, owner, corr, rk,
+                                 request.cookies.get("zb_session"))
+    jobs.set_celery(job_id, owner, async_res.id)
+    return {"job_id": job_id, "run_id": rid, "status": "queued", "run": db.get_run(rid, owner)}
 
 
 # --- jobs ---
