@@ -84,7 +84,7 @@ function RunInner() {
           </label>
           {!assets.length && <p className="mt-2 text-[12px] text-faint">No assets yet — <Link href="/assets" className="text-cy hover:underline">upload one</Link> first.</p>}
 
-          <button onClick={run} disabled={running || !taskId || !assetId}
+          <button data-assist="run-extraction" onClick={run} disabled={running || !taskId || !assetId}
             className="mt-5 w-full rounded-lg bg-vi px-4 py-2.5 text-[13px] font-semibold text-black hover:opacity-90 disabled:opacity-40">
             {running ? (phase === "running" ? "Running vision model…" : phase === "queued" ? "Queued…" : "Working…") : "Run extraction →"}
           </button>

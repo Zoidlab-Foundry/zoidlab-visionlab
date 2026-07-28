@@ -70,6 +70,7 @@ export default function AssetsPage() {
       </div>
 
       <div
+        data-assist="upload-asset"
         onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
         onDragLeave={() => setDrag(false)}
         onDrop={(e) => { e.preventDefault(); setDrag(false); upload(e.dataTransfer.files); }}

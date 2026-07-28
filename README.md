@@ -1,45 +1,48 @@
-# ZoidLab ModelBench — Foundry Package 08
+# ZoidLab VisionLab — Foundry Package 10
 
-**Model Benchmark Lab.** Answers *"which model wins on my actual workload?"* by running your
-prompts across models on the **live Nyquest relay** and measuring speed, cost, and quality.
+**AI Vision Lab.** Runs structured extraction and classification on your own images using
+**real vision models** through the Nyquest relay: define a reusable vision task with an
+extraction schema, point it at an uploaded image, and get structured JSON back with
+confidence and risk flags.
 
 Part of the [ZoidLab Foundry](https://foundry.zoidlab.ai). Requires **Nyquest Pro** (enforced
-on both the frontend gate and every backend data endpoint, fail-closed).
+on both the Next middleware and every FastAPI data endpoint, fail-closed).
 
 ## What it does
 
-- **Datasets** — prompt suites (seeded reasoning / coding / summarization sets, or your own).
-- **Real benchmark runs** — each prompt runs against each selected model through the relay.
-  Latency is wall-clock measured, tokens come from the relay's usage, cost is computed from the
-  price table. A failed call is recorded as a failure; an unpriced model is flagged, not hidden.
-- **Optional LLM-judge quality** — a judge model scores each answer 1–10, clearly labelled as
-  a model's opinion, not ground truth.
-- **Leaderboard** — per-model avg latency, success rate, cost, tokens, and (if judged) quality,
-  aggregated across runs, with fastest / cheapest / best-quality winners.
-- **Reports & export** — per-prompt outputs + a portable **Nyquest Benchmark Report** (JSON/YAML).
+- **Assets** — upload the images to analyze. Bytes live in object storage (MinIO), not the database.
+- **Tasks** — reusable vision tasks: an instruction prompt plus an extraction schema
+  (`{name, type, description}` fields) and a model choice.
+- **Real vision runs** — a task runs against an asset through the relay, billed to the user's
+  wallet. Output is structured JSON with confidence and risk flags.
+- **Durable jobs** — a run is a **Celery background job** that moves `queued → running → done`
+  and survives an API restart. The Runs page watches it to completion.
+- **Runs** — every run with job status, structured output, confidence, tokens, and cost.
 
 ## Honesty
 
-- Every number in a run is **measured** from a real relay call — nothing is estimated or seeded.
-  No results exist until you run a benchmark (which spends real relay credits).
-- Latency reflects relay conditions at run time and varies with load; the report says so.
-- Quality scores are one judge model's opinion. Cost uses list prices (`pricing.py`).
-- If no relay key is configured, the run endpoint returns `503 relay_unavailable` — it never
-  fabricates benchmark numbers.
+- Nothing is simulated. Every result comes from a real relay call against the uploaded image.
+- No results exist until you launch a run (which spends real relay credits).
+- Confidence and risk flags are the vision model's own assessment, not ground truth.
+- With no relay key configured the run endpoint fails loudly rather than fabricating output.
 
 ## Stack
 
-- **Backend**: FastAPI + SQLite. `benchmark_engine.py` (real relay runs, measured), `llm.py`
-  (relay client), `pricing.py` (cost from tokens). Runs execute in a FastAPI background task and
-  are polled for completion.
+- **Backend**: FastAPI + **Postgres with per-tenant FORCE row-level security** (every query
+  runs as the non-superuser `app_rls` role keyed on `app.current_owner`, so tenant isolation
+  is enforced by the database, not by application code). **Celery + Redis** for durable run
+  jobs; **MinIO** for image objects. Shared auth/relay/pricing come from `foundry-common`.
 - **Frontend**: Next.js 15 + React 19 + Tailwind. Shared `zb_session` SSO + reusable Pro gate.
-- **Deploy** (zoidberg): `modelbench-api` (:8702) + `modelbench-web` (:3702) behind the Cloudflare
-  tunnel at `modelbench.zoidlab.ai`.
+  Includes the in-app **Foundry Assistant** (Ask / Guide / Auto).
+- **Deploy** (zoidberg): `visionlab-api` (:8704) + `visionlab-web` (:3704) + `visionlab-worker`
+  behind the Cloudflare tunnel at `vision.zoidlab.ai`.
 
 ## Dev
 
 ```bash
 cd backend && python -m venv .venv && .venv/bin/pip install -r requirements.txt
-NYQUEST_API_KEY=... .venv/bin/uvicorn main:app --port 8702
-cd ../frontend && npm install && npm run dev   # proxies /api → 127.0.0.1:8702
+NYQUEST_API_KEY=... .venv/bin/uvicorn main:app --port 8704
+cd ../frontend && npm install && npm run dev   # proxies /api → 127.0.0.1:8704
 ```
+
+Live: https://vision.zoidlab.ai

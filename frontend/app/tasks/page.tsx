@@ -47,7 +47,7 @@ export default function TasksPage() {
           <h1 className="text-[22px] font-semibold">Tasks</h1>
           <p className="mt-1 text-[13px] text-dim">A task is a reusable extraction recipe — a prompt plus the schema of fields you want pulled out of every image.</p>
         </div>
-        <button onClick={() => setOpen(true)} className="rounded-lg bg-vi px-4 py-2 text-[13px] font-semibold text-black hover:opacity-90">New task</button>
+        <button data-assist="new-task" onClick={() => setOpen(true)} className="rounded-lg bg-vi px-4 py-2 text-[13px] font-semibold text-black hover:opacity-90">New task</button>
       </div>
 
       <div className="mt-6 grid gap-3 md:grid-cols-2">
