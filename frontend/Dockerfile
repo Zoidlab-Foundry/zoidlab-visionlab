@@ -4,6 +4,6 @@ COPY package.json ./
 RUN npm install
 COPY . .
 RUN npm run build
-ENV PORT=3600
-EXPOSE 3600
+ENV PORT=3704
+EXPOSE 3704
 CMD ["npm", "run", "start"]
