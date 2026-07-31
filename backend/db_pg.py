@@ -178,7 +178,7 @@ def list_assets(v=None, project_id=None, limit=200):
 
 def delete_asset(aid, owner):
     a = get_asset(aid, owner, with_data=False)
-    if not a or (a.get("owner_user_id") and a["owner_user_id"] != owner):
+    if not a or a.get("owner_user_id") != owner:
         return False
     if a.get("object_key"):
         storage.delete(a["object_key"])
@@ -213,7 +213,7 @@ def create_task(d, owner):
 
 def delete_task(tid, owner):
     t = get_task(tid, owner)
-    if not t or (t.get("owner_user_id") and t["owner_user_id"] != owner):
+    if not t or t.get("owner_user_id") != owner:
         return False
     with _tx(owner) as cur:
         cur.execute("DELETE FROM vision_tasks WHERE id=%s", (tid,))
